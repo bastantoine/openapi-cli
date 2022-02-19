@@ -5,26 +5,46 @@ import (
 	"path"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	ui "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 )
 
-func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) {
+func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) string {
 	target := path.Join(baseServer, name)
 	pattern := "\t%s %s\n"
 	if endpoint.Get != nil {
-		fmt.Printf(pattern, "GET", target)
+		return fmt.Sprintf(pattern, "GET", target)
 	}
 	if endpoint.Post != nil {
-		fmt.Printf(pattern, "POST", target)
+		return fmt.Sprintf(pattern, "POST", target)
 	}
 	if endpoint.Put != nil {
-		fmt.Printf(pattern, "PUT", target)
+		return fmt.Sprintf(pattern, "PUT", target)
 	}
 	if endpoint.Patch != nil {
-		fmt.Printf(pattern, "PATCH", target)
+		return fmt.Sprintf(pattern, "PATCH", target)
 	}
 	if endpoint.Delete != nil {
-		fmt.Printf(pattern, "DELETE", target)
+		return fmt.Sprintf(pattern, "DELETE", target)
 	}
+	return ""
+}
+
+func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths) *widgets.List {
+	l := widgets.NewList()
+	l.Title = "Endpoints"
+	rows := make([]string, 0)
+	for _, endpoints := range endpoints {
+		for name, endpoint := range endpoints {
+			rows = append(rows, printInfoEndpoint(baseServer, name, endpoint))
+		}
+	}
+	l.Rows = rows
+	l.TextStyle = ui.NewStyle(ui.ColorYellow)
+	l.WrapText = false
+	l.SetRect(0, 0, 40, 40)
+
+	return l
 }
 
 func main() {
@@ -59,10 +79,51 @@ func main() {
 			}
 		}
 	}
-	for tag, endpoints := range sortedEndpoints {
-		fmt.Printf("%s:\n", tag)
-		for name, endpoint := range endpoints {
-			printInfoEndpoint(baseServer, name, endpoint)
-		}
+
+	if err := ui.Init(); err != nil {
+		panic(fmt.Errorf("failed to initialize termui: %v", err))
 	}
+	defer ui.Close()
+
+	l := addEndpoints(baseServer, sortedEndpoints)
+	ui.Render(l)
+
+	previousKey := ""
+	uiEvents := ui.PollEvents()
+	for {
+		e := <-uiEvents
+		switch e.ID {
+		case "q", "<C-c>":
+			return
+		case "j", "<Down>":
+			l.ScrollDown()
+		case "k", "<Up>":
+			l.ScrollUp()
+		case "<C-d>":
+			l.ScrollHalfPageDown()
+		case "<C-u>":
+			l.ScrollHalfPageUp()
+		case "<C-f>":
+			l.ScrollPageDown()
+		case "<C-b>":
+			l.ScrollPageUp()
+		case "g":
+			if previousKey == "g" {
+				l.ScrollTop()
+			}
+		case "<Home>":
+			l.ScrollTop()
+		case "G", "<End>":
+			l.ScrollBottom()
+		}
+
+		if previousKey == "g" {
+			previousKey = ""
+		} else {
+			previousKey = e.ID
+		}
+
+		ui.Render(l)
+	}
+
 }
