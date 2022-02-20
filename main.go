@@ -9,6 +9,12 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
+type nodeValue string
+
+func (nv nodeValue) String() string {
+	return string(nv)
+}
+
 func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) string {
 	target := path.Join(baseServer, name)
 	pattern := "\t%s %s\n"
@@ -30,21 +36,30 @@ func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) str
 	return ""
 }
 
-func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths) *widgets.List {
-	l := widgets.NewList()
-	l.Title = "Endpoints"
+func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths) *widgets.Tree {
 	rows := make([]string, 0)
-	for _, endpoints := range endpoints {
+	nodes := []*widgets.TreeNode{}
+	for tag, endpoints := range endpoints {
+		nodesTag := []*widgets.TreeNode{}
 		for name, endpoint := range endpoints {
+			nodesTag = append(nodesTag, &widgets.TreeNode{
+				Value: nodeValue(printInfoEndpoint(baseServer, name, endpoint)),
+			})
 			rows = append(rows, printInfoEndpoint(baseServer, name, endpoint))
 		}
+		nodes = append(nodes, &widgets.TreeNode{
+			Value: nodeValue(tag),
+			Nodes: nodesTag,
+		})
 	}
-	l.Rows = rows
-	l.TextStyle = ui.NewStyle(ui.ColorYellow)
-	l.WrapText = false
-	l.SetRect(0, 0, 40, 40)
 
-	return l
+	t := widgets.NewTree()
+	t.SetNodes(nodes)
+	t.TextStyle = ui.NewStyle(ui.ColorYellow)
+	t.WrapText = false
+	t.SetRect(0, 0, 40, 40)
+
+	return t
 }
 
 func main() {
@@ -85,8 +100,8 @@ func main() {
 	}
 	defer ui.Close()
 
-	l := addEndpoints(baseServer, sortedEndpoints)
-	ui.Render(l)
+	t := addEndpoints(baseServer, sortedEndpoints)
+	ui.Render(t)
 
 	previousKey := ""
 	uiEvents := ui.PollEvents()
@@ -96,25 +111,31 @@ func main() {
 		case "q", "<C-c>":
 			return
 		case "j", "<Down>":
-			l.ScrollDown()
+			t.ScrollDown()
 		case "k", "<Up>":
-			l.ScrollUp()
+			t.ScrollUp()
 		case "<C-d>":
-			l.ScrollHalfPageDown()
+			t.ScrollHalfPageDown()
 		case "<C-u>":
-			l.ScrollHalfPageUp()
+			t.ScrollHalfPageUp()
 		case "<C-f>":
-			l.ScrollPageDown()
+			t.ScrollPageDown()
 		case "<C-b>":
-			l.ScrollPageUp()
+			t.ScrollPageUp()
 		case "g":
 			if previousKey == "g" {
-				l.ScrollTop()
+				t.ScrollTop()
 			}
 		case "<Home>":
-			l.ScrollTop()
+			t.ScrollTop()
 		case "G", "<End>":
-			l.ScrollBottom()
+			t.ScrollBottom()
+		case "<Enter>":
+			t.ToggleExpand()
+		case "<Right>":
+			t.Expand()
+		case "<Left>":
+			t.Collapse()
 		}
 
 		if previousKey == "g" {
@@ -123,7 +144,7 @@ func main() {
 			previousKey = e.ID
 		}
 
-		ui.Render(l)
+		ui.Render(t)
 	}
 
 }
