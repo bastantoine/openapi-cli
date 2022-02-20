@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	ui "github.com/gizak/termui/v3"
@@ -16,7 +15,7 @@ func (nv nodeValue) String() string {
 }
 
 func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) string {
-	target := path.Join(baseServer, name)
+	target := name
 	pattern := "\t%s %s\n"
 	if endpoint.Get != nil {
 		return fmt.Sprintf(pattern, "GET", target)
