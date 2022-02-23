@@ -14,7 +14,7 @@ func (nv nodeValue) String() string {
 	return string(nv)
 }
 
-func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) string {
+func printInfoEndpoint(name string, endpoint *openapi3.PathItem) string {
 	target := name
 	pattern := "\t%s %s\n"
 	if endpoint.Get != nil {
@@ -35,13 +35,13 @@ func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) str
 	return ""
 }
 
-func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) *widgets.Tree {
+func addEndpoints(endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) *widgets.Tree {
 	nodes := []*widgets.TreeNode{}
 	for tag, endpoints := range endpoints {
 		nodesTag := []*widgets.TreeNode{}
 		for name, endpoint := range endpoints {
 			nodesTag = append(nodesTag, &widgets.TreeNode{
-				Value: nodeValue(printInfoEndpoint(baseServer, name, endpoint)),
+				Value: nodeValue(printInfoEndpoint(name, endpoint)),
 			})
 		}
 		nodes = append(nodes, &widgets.TreeNode{
@@ -64,9 +64,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	// TODO: what to do when there's multiple servers?
-	baseServer := doc.Servers[0].URL
 
 	sortedEndpoints := make(map[string]openapi3.Paths)
 	for name, endpoint := range doc.Paths {
@@ -98,7 +95,7 @@ func main() {
 	defer ui.Close()
 	maxWidth, maxHeight := ui.TerminalDimensions()
 
-	t := addEndpoints(baseServer, sortedEndpoints, maxWidth, maxHeight)
+	t := addEndpoints(sortedEndpoints, maxWidth, maxHeight)
 	ui.Render(t)
 
 	previousKey := ""
