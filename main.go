@@ -36,7 +36,6 @@ func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) str
 }
 
 func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) *widgets.Tree {
-	rows := make([]string, 0)
 	nodes := []*widgets.TreeNode{}
 	for tag, endpoints := range endpoints {
 		nodesTag := []*widgets.TreeNode{}
@@ -44,7 +43,6 @@ func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths, maxWid
 			nodesTag = append(nodesTag, &widgets.TreeNode{
 				Value: nodeValue(printInfoEndpoint(baseServer, name, endpoint)),
 			})
-			rows = append(rows, printInfoEndpoint(baseServer, name, endpoint))
 		}
 		nodes = append(nodes, &widgets.TreeNode{
 			Value: nodeValue(tag),
