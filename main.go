@@ -14,25 +14,10 @@ func (nv nodeValue) String() string {
 	return string(nv)
 }
 
-func printInfoEndpoint(name string, endpoint *openapi3.PathItem) string {
+func printInfoOperation(name, operation string) string {
 	target := name
 	pattern := "\t%s %s\n"
-	if endpoint.Get != nil {
-		return fmt.Sprintf(pattern, "GET", target)
-	}
-	if endpoint.Post != nil {
-		return fmt.Sprintf(pattern, "POST", target)
-	}
-	if endpoint.Put != nil {
-		return fmt.Sprintf(pattern, "PUT", target)
-	}
-	if endpoint.Patch != nil {
-		return fmt.Sprintf(pattern, "PATCH", target)
-	}
-	if endpoint.Delete != nil {
-		return fmt.Sprintf(pattern, "DELETE", target)
-	}
-	return ""
+	return fmt.Sprintf(pattern, strings.ToUpper(operation), target)
 }
 
 func addEndpoints(endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) *widgets.Tree {
@@ -40,9 +25,31 @@ func addEndpoints(endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) 
 	for tag, endpoints := range endpoints {
 		nodesTag := []*widgets.TreeNode{}
 		for name, endpoint := range endpoints {
-			nodesTag = append(nodesTag, &widgets.TreeNode{
-				Value: nodeValue(printInfoEndpoint(name, endpoint)),
-			})
+			if endpoint.Get != nil {
+				nodesTag = append(nodesTag, &widgets.TreeNode{
+					Value: nodeValue(printInfoOperation(name, "Get")),
+				})
+			}
+			if endpoint.Post != nil {
+				nodesTag = append(nodesTag, &widgets.TreeNode{
+					Value: nodeValue(printInfoOperation(name, "Post")),
+				})
+			}
+			if endpoint.Put != nil {
+				nodesTag = append(nodesTag, &widgets.TreeNode{
+					Value: nodeValue(printInfoOperation(name, "Put")),
+				})
+			}
+			if endpoint.Patch != nil {
+				nodesTag = append(nodesTag, &widgets.TreeNode{
+					Value: nodeValue(printInfoOperation(name, "Patch")),
+				})
+			}
+			if endpoint.Delete != nil {
+				nodesTag = append(nodesTag, &widgets.TreeNode{
+					Value: nodeValue(printInfoOperation(name, "Delete")),
+				})
+			}
 		}
 		nodes = append(nodes, &widgets.TreeNode{
 			Value: nodeValue(tag),
