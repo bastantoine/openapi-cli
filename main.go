@@ -35,7 +35,7 @@ func printInfoEndpoint(baseServer, name string, endpoint *openapi3.PathItem) str
 	return ""
 }
 
-func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths) *widgets.Tree {
+func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths, maxWidth, maxHeight int) *widgets.Tree {
 	rows := make([]string, 0)
 	nodes := []*widgets.TreeNode{}
 	for tag, endpoints := range endpoints {
@@ -56,7 +56,7 @@ func addEndpoints(baseServer string, endpoints map[string]openapi3.Paths) *widge
 	t.SetNodes(nodes)
 	t.TextStyle = ui.NewStyle(ui.ColorYellow)
 	t.WrapText = false
-	t.SetRect(0, 0, 40, 40)
+	t.SetRect(0, 0, int(1.0/4.0*float64(maxWidth)), maxHeight)
 
 	return t
 }
@@ -98,8 +98,9 @@ func main() {
 		panic(fmt.Errorf("failed to initialize termui: %v", err))
 	}
 	defer ui.Close()
+	maxWidth, maxHeight := ui.TerminalDimensions()
 
-	t := addEndpoints(baseServer, sortedEndpoints)
+	t := addEndpoints(baseServer, sortedEndpoints, maxWidth, maxHeight)
 	ui.Render(t)
 
 	previousKey := ""
