@@ -47,17 +47,45 @@ func (e *Endpoint) detailedInfos() string {
 
 [::i]Description [-:-:-]: {{ .Description }}
 [::i]Tags        [-:-:-]: {{ .Tags }}
+[::i]Responses   [-:-:-]:
+{{ tmplResponses .Responses }}
 `
 
-	data := struct{ Title, Description, Tags, Color string }{
+	responses := map[string]struct{ Description string }{}
+	for status_code, resp := range e.operationObj.Responses {
+		responses[status_code] = struct{ Description string }{Description: *resp.Value.Description}
+	}
+
+	data := struct {
+		Title       string
+		Description string
+		Tags        string
+		Color       string
+		Responses   map[string]struct{ Description string }
+	}{
 		Title:       e.title(),
 		Description: e.operationObj.Description,
 		Tags:        strings.Join(e.operationObj.Tags, ", "),
 		Color:       colorString(OPERATION_COLORS_MAPPING[e.operation]),
+		Responses:   responses,
 	}
 
 	var out bytes.Buffer
-	t := template.Must(template.New("").Parse(tmpl))
+	t := template.Must(template.New("").Funcs(template.FuncMap{
+		"tmplResponses": func(responses map[string]struct{ Description string }) string {
+			var out bytes.Buffer
+			status_codes := make([]string, 0, len(responses))
+			for status_code := range responses {
+				status_codes = append(status_codes, status_code)
+			}
+			sort.Strings(status_codes)
+			for _, status_code := range status_codes {
+				resp := responses[status_code]
+				out.WriteString(fmt.Sprintf("\t[::i]%s[-:-:-]: %s\n", status_code, resp.Description))
+			}
+			return out.String()
+		},
+	}).Parse(tmpl))
 	if err := t.Execute(&out, data); err != nil {
 		panic(err)
 	}
