@@ -32,6 +32,11 @@ var OPERATION_COLORS_MAPPING = map[string]tcell.Color{
 	"PATCH":  tcell.ColorYellow,
 }
 
+type Data struct {
+	Tags           []string
+	EndpointsByTag map[string][]Endpoint
+}
+
 type Endpoint struct {
 	name         string
 	operation    string
@@ -92,10 +97,10 @@ func (e *Endpoint) detailedInfos() string {
 	return out.String()
 }
 
-func main() {
+func prepare_data() (Data, error) {
 	doc, err := openapi3.NewLoader().LoadFromFile("openapi.json")
 	if err != nil {
-		panic(err)
+		return Data{}, err
 	}
 
 	// Sort the endpoints by their tags
@@ -152,8 +157,14 @@ func main() {
 		tags = append(tags, tag)
 	}
 	sort.Strings(tags)
-	app := tview.NewApplication()
 
+	return Data{
+		Tags:           tags,
+		EndpointsByTag: sortedEndpoints,
+	}, nil
+}
+
+func prepare_gui(app *tview.Application, data Data) {
 	// Endpoints tree
 	root := tview.NewTreeNode("")
 	endpoint_tree := tview.NewTreeView().
@@ -161,12 +172,12 @@ func main() {
 		SetCurrentNode(root).
 		SetTopLevel(1)
 
-	for _, tag := range tags {
+	for _, tag := range data.Tags {
 		tag_node := tview.NewTreeNode(tag).
 			SetExpanded(false).
 			SetReference(tag).
 			SetSelectable(true)
-		endpoints := sortedEndpoints[tag]
+		endpoints := data.EndpointsByTag[tag]
 		if len(endpoints) > 0 {
 			for _, endpoint := range endpoints {
 				tag_node.AddChild(tview.NewTreeNode(endpoint.title()).
@@ -222,7 +233,19 @@ func main() {
 
 	})
 
-	if err := app.SetRoot(grid, true).Run(); err != nil {
+	app.SetRoot(grid, true)
+}
+
+func main() {
+	data, err := prepare_data()
+	if err != nil {
+		panic(err)
+	}
+
+	app := tview.NewApplication()
+	prepare_gui(app, data)
+
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 
