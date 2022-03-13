@@ -52,13 +52,20 @@ func (e *Endpoint) detailedInfos() string {
 
 [::i]Description [-:-:-]: {{ .Description }}
 [::i]Tags        [-:-:-]: {{ .Tags }}
-[::i]Responses   [-:-:-]:
-{{ tmplResponses .Responses }}
+[::i]Responses   [-:-:-]
+{{ processResponses .Responses }}
 `
 
-	responses := map[string]struct{ Description string }{}
+	responses := map[string]Response{}
 	for status_code, resp := range e.operationObj.Responses {
-		responses[status_code] = struct{ Description string }{Description: *resp.Value.Description}
+		headers := map[string]string{}
+		for name, header := range resp.Value.Headers {
+			headers[name] = header.Value.Description
+		}
+		responses[status_code] = Response{
+			Description: *resp.Value.Description,
+			Headers:     headers,
+		}
 	}
 
 	data := struct {
@@ -66,7 +73,8 @@ func (e *Endpoint) detailedInfos() string {
 		Description string
 		Tags        string
 		Color       string
-		Responses   map[string]struct{ Description string }
+		Responses   map[string]Response
+		Headers     map[string]map[string]string
 	}{
 		Title:       e.title(),
 		Description: e.operationObj.Description,
@@ -77,24 +85,56 @@ func (e *Endpoint) detailedInfos() string {
 
 	var out bytes.Buffer
 	t := template.Must(template.New("").Funcs(template.FuncMap{
-		"tmplResponses": func(responses map[string]struct{ Description string }) string {
+		"processResponses": func(responses map[string]Response) string {
 			var out bytes.Buffer
-			status_codes := make([]string, 0, len(responses))
-			for status_code := range responses {
-				status_codes = append(status_codes, status_code)
+			for status_code, resp := range responses {
+				out.WriteString(fmt.Sprintf("[::i]%s[-:-:-]:\n", status_code))
+				out.WriteString(tabsOffsetString(resp.detailedInfos()))
 			}
-			sort.Strings(status_codes)
-			for _, status_code := range status_codes {
-				resp := responses[status_code]
-				out.WriteString(fmt.Sprintf("\t[::i]%s[-:-:-]: %s\n", status_code, resp.Description))
-			}
-			return out.String()
+			return tabsOffsetString(out.String())
 		},
 	}).Parse(tmpl))
 	if err := t.Execute(&out, data); err != nil {
 		panic(err)
 	}
 	return out.String()
+}
+
+type Response struct {
+	Description string
+	Headers     map[string]string
+}
+
+func (r *Response) detailedInfos() string {
+	tmpl := `[::i]Description [-:-:-]: {{ .Description }}
+{{ if gt (len .Headers) 0 }}[::i]Headers     [-:-:-]:
+{{ processHeaders .Headers }}{{ end }}
+`
+
+	var out bytes.Buffer
+	t := template.Must(template.New("").Funcs(template.FuncMap{
+		"processHeaders": func(headers map[string]string) string {
+			var out bytes.Buffer
+			for name, value := range headers {
+				out.WriteString(fmt.Sprintf("[::i]%s[-:-:-]: %s\n", name, value))
+			}
+			return tabsOffsetString(out.String())
+		},
+	}).Parse(tmpl))
+	if err := t.Execute(&out, r); err != nil {
+		panic(err)
+	}
+	return out.String()
+}
+
+func tabsOffsetString(str string) string {
+	parts := strings.Split(str, "\n")
+	for i, part := range parts {
+		if part != "" {
+			parts[i] = "\t" + part
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 func prepare_data() (Data, error) {
